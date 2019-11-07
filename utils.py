@@ -62,10 +62,12 @@ def test_image(image_id):
     wenda_faces = wenda_face_cascade.detectMultiScale(img, 1.1, 21)
     wizard_face_cascade = cv2.CascadeClassifier("wizard_0.3_3e-5.xml")
     wizard_faces = wizard_face_cascade.detectMultiScale(img, 1.05, 5)
-    waldo_body_cascade = cv2.CascadeClassifier("waldo_body_1e-5.xml")
+    waldo_body_cascade = cv2.CascadeClassifier("waldo_body_0.0003.xml")
     waldo_bodies = waldo_body_cascade.detectMultiScale(img, 1.1, 5)
     wenda_body_cascade = cv2.CascadeClassifier("wenda_body_2e-5.xml")
     wenda_bodies = wenda_body_cascade.detectMultiScale(img, 1.1, 5)
+    wizard_body_cascade = cv2.CascadeClassifier("wizard_body_0.0001.xml")
+    wizard_bodies = wizard_body_cascade.detectMultiScale(img, 1.1, 5)
 
     im = ax.imshow(img)
     targets = ["waldo", "wenda", "wizard"]
@@ -80,16 +82,16 @@ def test_image(image_id):
     waldo = load("hog_waldo")
     waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.5)
     waldo_faces.sort(key=lambda x: x[1])
-    waldo_faces = waldo_faces[:10]
-    for waldo_body in waldo_bodies:
-        waldo_face = [waldo_body[0], waldo_body[1], waldo_body[2], waldo_body[2]]
-        res = filter_candidate_hog(image_id, [waldo_face], waldo, 0.5)
-        if res:
-            info = res[:1]
-            info.extend(waldo_body)
-            waldo_faces.append(info)
+    waldo_faces = waldo_faces[:5]
 
-    for _, score, x, y, w, h in waldo_faces:
+    waldo_body = load("hog_waldo_body")
+    waldo_bodies = filter_candidate_hog(image_id, waldo_bodies, waldo_body, 0.5)
+    waldo_bodies.sort(key=lambda x: x[1])
+    waldo_bodies = waldo_bodies[:5]
+
+    waldo_bboxes = waldo_faces + waldo_bodies
+    print(len(waldo_faces), len(waldo_bodies), len(waldo_bboxes))
+    for _, score, x, y, w, h in waldo_bboxes:
         # for x, y, w, h in waldo_faces:
         ax.add_patch(Rectangle((x, y), w, h, linewidth=3,
                                edgecolor='r', facecolor=(1, 1, 1, 0.3)))
@@ -98,16 +100,15 @@ def test_image(image_id):
     wenda = load("svm_wenda")
     wenda_faces = filter_candidate_sift(image_id, wenda_faces, wenda, 0.5, "vocab/vocab_wenda_200.pkl")
     wenda_faces.sort(key=lambda x: x[1])
-    wenda_faces = wenda_faces[:10]
-    for wenda_body in wenda_bodies:
-        wenda_face = [wenda_body[0], wenda_body[1], wenda_body[2], wenda_body[2]]
-        res = filter_candidate_sift(image_id, [wenda_face], wenda, 0.5, "vocab/vocab_wenda_200.pkl")
-        if res:
-            info = res[:1]
-            info.extend(wenda_body)
-            wenda_faces.append(info)
+    wenda_faces = wenda_faces[:5]
 
-    for _, score, x, y, w, h in wenda_faces:
+    wenda_body = load("hog_wenda_body")
+    wenda_bodies = filter_candidate_sift(image_id, wenda_bodies, wenda_body, 0.5, "vocab/vocab_wenda_200.pkl")
+    wenda_bodies.sort(key=lambda x: x[1])
+    wenda_bodies = wenda_bodies[:5]
+
+    wenda_bboxes = wenda_faces + wenda_bodies
+    for _, score, x, y, w, h in wenda_bboxes:
         ax.add_patch(Rectangle((x, y), w, h, linewidth=3,
                                edgecolor='b', facecolor=(1, 1, 1, 0.3)))
         ax.text(x, y + h / 2, 'wenda-{0:.3f}'.format(score))
@@ -115,13 +116,20 @@ def test_image(image_id):
     wizard = load("hog_wizard")
     wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 1)
     wizard_faces.sort(key=lambda x: x[1])
-    wizard_faces = wizard_faces[:10]
-    for _, score, x, y, w, h in wizard_faces:
+    wizard_faces = wizard_faces[:5]
+
+    wizard_body = load("hog_waldo_body")
+    wizard_bodies = filter_candidate_hog(image_id, wizard_bodies, wizard_body, 0.5)
+    wizard_bodies.sort(key=lambda x: x[1])
+    wizard_bodies = wizard_bodies[:5]
+
+    wizard_bboxes = wizard_faces + wizard_bodies
+    for _, score, x, y, w, h in wizard_bboxes:
         ax.add_patch(Rectangle((x, y), w, h, linewidth=3,
                                edgecolor='g', facecolor=(1, 1, 1, 0.3)))
         ax.text(x, y + h, 'wizard-{0:.3f}'.format(score))
 
-    write("baseline", waldo_faces, wenda_faces, wizard_faces)
+    write("baseline", waldo_bboxes, wenda_bboxes, wizard_bboxes)
 
 def show_svm_res(f, val_images_all, vocab_size, training_set_this, train_labels_this, val_labels_this, categories, ax):
     vocab_filename = "vocab/{0}_{1}.pkl".format(f, vocab_size)
