@@ -6,6 +6,7 @@
 # ====================================================
 
 from voc_eval import *
+from utils import *
 
 detpath = 'baseline/{}.txt'
 annopath = 'datasets/Annotations/{}.xml'
