@@ -116,7 +116,7 @@ def filter_candidate_sift(image_id, candidates_pos, model, threshold, vocab_file
             continue
         candidate_feats = bags_of_sifts_spm([candidate], vocab_filename, 3)
         pred = model.predict_proba(candidate_feats)[0]
-        if pred[0] >= threshold:
+        if pred[0] <= threshold:
             info = [image_id, pred[0]]
             info.extend(pos)
             filtered_candidates_pos.append(info)

@@ -13,6 +13,13 @@ annopath = 'datasets/Annotations/{}.xml'
 imagesetfile = 'datasets/ImageSets/val.txt'
 cachedir = 'cache_anno'
 
+with open(imagesetfile, 'r') as f:
+    lines = f.readlines()
+imagenames = [x.strip() for x in lines]
+for imagename in imagenames:
+    print("Evaluating {}".format(imagename))
+    test_image(imagename)
+
 classes = ['waldo', 'wenda', 'wizard']
 meanAP = 0
 for idx, classname in enumerate(classes) :

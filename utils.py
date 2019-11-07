@@ -30,19 +30,19 @@ def write(directory, waldo_list, wenda_list, wizard_list):
     """
     Write output to file
     """
-    with open('{}/waldo.txt'.format(directory), 'w') as f:
+    with open('{}/waldo.txt'.format(directory), 'a') as f:
         for item in waldo_list:
             for p in item:
                 f.write("%s " % p)
             f.write("\n")
 
-    with open('{}/wenda.txt'.format(directory), 'w') as f:
+    with open('{}/wenda.txt'.format(directory), 'a') as f:
         for item in wenda_list:
             for p in item:
                 f.write("%s " % p)
             f.write("\n")
 
-    with open('{}/wizard.txt'.format(directory), 'w') as f:
+    with open('{}/wizard.txt'.format(directory), 'a') as f:
         for item in wizard_list:
             for p in item:
                 f.write("%s " % p)
@@ -55,22 +55,17 @@ def test_image(image_id):
     img = mpimg.imread(join("datasets/JPEGImages/{}.jpg".format(image_id)))
 
     # 40-40 1.1 21
-    """
-    waldo_face_cascade = cv2.CascadeClassifier("all_0.5_0.0001.xml")
-    waldo_faces = waldo_face_cascade.detectMultiScale(img, 1.1, 21)
-    hog_b = load("hog_balanced")
-    waldo_faces = filter_candidate_hog(image_id, waldo_faces, hog_b, 0.5)
-    waldo_faces = [item[2:] for item in waldo_faces]
-    wenda_faces = waldo_faces
-    wizard_faces = waldo_faces
-    """
+
     waldo_face_cascade = cv2.CascadeClassifier("lbp_40_40.xml")
-    waldo_faces = waldo_face_cascade.detectMultiScale(img, 1.1, 5)
+    waldo_faces = waldo_face_cascade.detectMultiScale(img, 1.1, 21)
     wenda_face_cascade = cv2.CascadeClassifier("wenda_0.5_0.0007.xml")
-    wenda_faces = wenda_face_cascade.detectMultiScale(img, 1.05, 5)
+    wenda_faces = wenda_face_cascade.detectMultiScale(img, 1.1, 21)
     wizard_face_cascade = cv2.CascadeClassifier("wizard_0.3_3e-5.xml")
     wizard_faces = wizard_face_cascade.detectMultiScale(img, 1.05, 5)
-
+    waldo_body_cascade = cv2.CascadeClassifier("waldo_body_1e-5.xml")
+    waldo_bodies = waldo_body_cascade.detectMultiScale(img, 1.1, 5)
+    wenda_body_cascade = cv2.CascadeClassifier("wenda_body_2e-5.xml")
+    wenda_bodies = wenda_body_cascade.detectMultiScale(img, 1.1, 5)
 
     im = ax.imshow(img)
     targets = ["waldo", "wenda", "wizard"]
@@ -79,36 +74,52 @@ def test_image(image_id):
         for anno in annos:
             x_min, y_min, x_max, y_max = anno
             ax.add_patch(Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, linewidth=1,
-                                          edgecolor='w', facecolor=(1, 1, 1, 0.7)))
+                                   edgecolor='w', facecolor=(1, 1, 1, 0.7)))
             ax.text(x_min, y_min, target)
 
     waldo = load("hog_waldo")
-    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0)
+    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.5)
     waldo_faces.sort(key=lambda x: x[1])
     waldo_faces = waldo_faces[:10]
+    for waldo_body in waldo_bodies:
+        waldo_face = [waldo_body[0], waldo_body[1], waldo_body[2], waldo_body[2]]
+        res = filter_candidate_hog(image_id, [waldo_face], waldo, 0.5)
+        if res:
+            info = res[:1]
+            info.extend(waldo_body)
+            waldo_faces.append(info)
+
     for _, score, x, y, w, h in waldo_faces:
-    #for x, y, w, h in waldo_faces:
+        # for x, y, w, h in waldo_faces:
         ax.add_patch(Rectangle((x, y), w, h, linewidth=3,
-                                      edgecolor='r', facecolor=(1, 1, 1, 0.3)))
+                               edgecolor='r', facecolor=(1, 1, 1, 0.3)))
         ax.text(x, y, 'waldo-{0:.3f}'.format(score))
 
     wenda = load("svm_wenda")
-    wenda_faces = filter_candidate_sift(image_id, wenda_faces, wenda, 0, "vocab/vocab_wenda_200.pkl")
+    wenda_faces = filter_candidate_sift(image_id, wenda_faces, wenda, 0.5, "vocab/vocab_wenda_200.pkl")
     wenda_faces.sort(key=lambda x: x[1])
     wenda_faces = wenda_faces[:10]
+    for wenda_body in wenda_bodies:
+        wenda_face = [wenda_body[0], wenda_body[1], wenda_body[2], wenda_body[2]]
+        res = filter_candidate_sift(image_id, [wenda_face], wenda, 0.5, "vocab/vocab_wenda_200.pkl")
+        if res:
+            info = res[:1]
+            info.extend(wenda_body)
+            wenda_faces.append(info)
+
     for _, score, x, y, w, h in wenda_faces:
         ax.add_patch(Rectangle((x, y), w, h, linewidth=3,
-                                      edgecolor='b', facecolor=(1, 1, 1, 0.3)))
-        ax.text(x, y+h/2, 'wenda-{0:.3f}'.format(score))
+                               edgecolor='b', facecolor=(1, 1, 1, 0.3)))
+        ax.text(x, y + h / 2, 'wenda-{0:.3f}'.format(score))
 
     wizard = load("hog_wizard")
-    wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 0)
+    wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 1)
     wizard_faces.sort(key=lambda x: x[1])
     wizard_faces = wizard_faces[:10]
     for _, score, x, y, w, h in wizard_faces:
         ax.add_patch(Rectangle((x, y), w, h, linewidth=3,
-                                      edgecolor='g', facecolor=(1, 1, 1, 0.3)))
-        ax.text(x, y+h, 'wizard-{0:.3f}'.format(score))
+                               edgecolor='g', facecolor=(1, 1, 1, 0.3)))
+        ax.text(x, y + h, 'wizard-{0:.3f}'.format(score))
 
     write("baseline", waldo_faces, wenda_faces, wizard_faces)
 

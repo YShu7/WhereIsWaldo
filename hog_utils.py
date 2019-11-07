@@ -42,7 +42,7 @@ def filter_candidate_hog(image_id, candidates_pos, model, threshold):
                                     cells_per_block=(2, 2), transform_sqrt=True, block_norm="L2-Hys", visualize=True)
         pred = model.predict_proba(H.reshape(1, -1))[0]
 
-        if pred[0] >= threshold:
+        if pred[0] <= threshold:
             info = [image_id, pred[0]]
             info.extend(pos)
             filtered_candidates_pos.append(info)
