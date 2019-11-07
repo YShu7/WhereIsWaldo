@@ -62,10 +62,10 @@ def test_image(image_id):
     wenda_faces = wenda_face_cascade.detectMultiScale(img, 1.1, 21)
     wizard_face_cascade = cv2.CascadeClassifier("wizard_0.3_3e-5.xml")
     wizard_faces = wizard_face_cascade.detectMultiScale(img, 1.05, 5)
-    waldo_body_cascade = cv2.CascadeClassifier("waldo_body_1e-5.xml")
-    waldo_bodies = waldo_body_cascade.detectMultiScale(img, 1.1, 5)
+    waldo_body_cascade = cv2.CascadeClassifier("waldo_body_0.0003.xml")
+    waldo_bodies = waldo_body_cascade.detectMultiScale(img, 1.1, 7)
     wenda_body_cascade = cv2.CascadeClassifier("wenda_body_2e-5.xml")
-    wenda_bodies = wenda_body_cascade.detectMultiScale(img, 1.1, 5)
+    wenda_bodies = wenda_body_cascade.detectMultiScale(img, 1.3, 21)
 
     im = ax.imshow(img)
     targets = ["waldo", "wenda", "wizard"]
@@ -82,12 +82,18 @@ def test_image(image_id):
     waldo_faces.sort(key=lambda x: x[1])
     waldo_faces = waldo_faces[:10]
     for waldo_body in waldo_bodies:
-        waldo_face = [waldo_body[0], waldo_body[1], waldo_body[2], waldo_body[2]]
-        res = filter_candidate_hog(image_id, [waldo_face], waldo, 0.5)
-        if res:
-            info = res[:1]
-            info.extend(waldo_body)
-            waldo_faces.append(info)
+        if waldo_body[2] < img.shape[0] * 0.015:
+            continue
+        print(waldo_body)
+        info = [image_id, 0]
+        info.extend(waldo_body)
+        waldo_faces.append(info)
+        #waldo_face = [waldo_body[0], waldo_body[1], waldo_body[2], waldo_body[2]]
+        #res = filter_candidate_hog(image_id, [waldo_face], waldo, 0.3)
+        #for i in res:
+        #    info = [image_id, i[1]]
+        #    info.extend(waldo_body)
+        #    waldo_faces.append(info)
 
     for _, score, x, y, w, h in waldo_faces:
         # for x, y, w, h in waldo_faces:
@@ -101,9 +107,9 @@ def test_image(image_id):
     wenda_faces = wenda_faces[:10]
     for wenda_body in wenda_bodies:
         wenda_face = [wenda_body[0], wenda_body[1], wenda_body[2], wenda_body[2]]
-        res = filter_candidate_sift(image_id, [wenda_face], wenda, 0.5, "vocab/vocab_wenda_200.pkl")
-        if res:
-            info = res[:1]
+        res = filter_candidate_sift(image_id, [wenda_face], wenda, 0.3, "vocab/vocab_wenda_200.pkl")
+        for i in res:
+            info = [image_id, i[1]]
             info.extend(wenda_body)
             wenda_faces.append(info)
 
