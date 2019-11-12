@@ -8,13 +8,13 @@
 from voc_eval import *
 from utils import *
 
-detpath = 'baseline/{}.txt'
+detpath = 'baseline_1/{}.txt'
 annopath = 'datasets/Annotations/{}.xml'
 imagesetfile = 'datasets/ImageSets/val.txt'
 cachedir = 'cache_anno'
 
-for the_file in os.listdir("baseline"):
-    file_path = os.path.join("baseline", the_file)
+for the_file in os.listdir("baseline_1"):
+    file_path = os.path.join("baseline_1", the_file)
     try:
         if os.path.isfile(file_path):
             os.unlink(file_path)
@@ -26,13 +26,13 @@ with open(imagesetfile, 'r') as f:
 imagenames = [x.strip() for x in lines]
 for imagename in imagenames:
     print("Evaluating {}".format(imagename))
-    test_image(imagename, "baseline")
+    test_image(imagename, "baseline_1")
 
 classes = ['waldo', 'wenda', 'wizard']
 meanAP = 0
 for idx, classname in enumerate(classes) :
     rec, prec, ap = voc_eval(detpath, annopath, imagesetfile, classname,
-                                            cachedir, ovthresh=0.5, use_07_metric=False)
+                                            cachedir, ovthresh=0.1, use_07_metric=False)
     meanAP += ap
     print('{}: {}'.format(classname, ap))
 
