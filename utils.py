@@ -49,6 +49,9 @@ def write(directory, waldo_list, wenda_list, wizard_list):
             f.write("\n")
 
 def validate_body(image_id, faces, filename, wt=2, ht=3, s=1.3, mn=3, t=0):
+    """
+    Validate if the faces detected is from an character with body shown in the image.
+    """
     win = []
     win_f = []
     img = mpimg.imread(join("datasets/JPEGImages/{}.jpg".format(image_id)))
@@ -101,10 +104,10 @@ def test_image(image_id):
         flags = cv2.CASCADE_SCALE_IMAGE,
         outputRejectLevels = True
     )
-    waldo_faces = [waldo_face for i, waldo_face in enumerate(waldo_faces) if waldo_score[i][0] > 2]
+    waldo_faces = [waldo_face for i, waldo_face in enumerate(waldo_faces) if waldo_score[i][0] > 3]
     waldo = load("hog_waldo")
-    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.2)
-    waldo_bodies, waldo_faces = validate_body(image_id, waldo_faces, "xml/waldo_body_1e-5.xml", t=0)
+    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.15)
+    waldo_bodies, waldo_faces = validate_body(image_id, waldo_faces, "xml/waldo_body_0.3_0.0002.xml", wt=3, ht=4, t=1)
    
     wenda_face_cascade = cv2.CascadeClassifier("xml/wenda_0.5_0.0007.xml")
     wenda_faces, _, wenda_score = wenda_face_cascade.detectMultiScale3(
