@@ -16,8 +16,10 @@ def build_vocab(images, vocab_size):
         frames, descriptors = vlfeat.sift.dsift(img, step=1, fast=True)
         if descriptors.shape[0] > 20:
             idx = np.random.choice(descriptors.shape[0], size=20, replace=False)
-        else:
+        elif descriptors.shape[0] > 0:
             idx = np.random.choice(descriptors.shape[0], size=20, replace=True)
+        else:
+            continue
         total_SIFT_features[i * 20:(i + 1) * 20] = descriptors[idx, :]
     vocab = vlfeat.kmeans.kmeans(total_SIFT_features, vocab_size)
 
@@ -116,9 +118,9 @@ def filter_candidate_sift(image_id, candidates_pos, model, threshold, vocab_file
             continue
         candidate_feats = bags_of_sifts_spm([candidate], vocab_filename, 3)
         pred = model.predict_proba(candidate_feats)[0]
-        if pred[0] <= threshold:
+        if pred[0] >= threshold:
             info = [image_id, pred[0]]
-            info.extend(pos)
+            info.extend([x, y, x+w, y+h])
             filtered_candidates_pos.append(info)
 
     return filtered_candidates_pos

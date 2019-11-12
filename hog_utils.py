@@ -43,8 +43,8 @@ def filter_candidate_hog(image_id, candidates_pos, model, threshold):
         pred = model.predict_proba(H.reshape(1, -1))[0]
 
         if pred[0] <= threshold:
-            info = [image_id, pred[0]]
-            info.extend(pos)
+            info = [image_id, 1-pred[0]]
+            info.extend([x, y, x+w, y+h])
             filtered_candidates_pos.append(info)
 
     return filtered_candidates_pos

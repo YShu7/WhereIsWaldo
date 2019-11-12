@@ -110,7 +110,7 @@ def get_images(image_ids):
     return val_images
 
 
-def load_train_images(directory):
+def load_train_images(directory, isGray=False):
     """
     Get all gray_scale images of the input directory
     :param directory: the directory that images are loaded from
@@ -121,7 +121,9 @@ def load_train_images(directory):
     paths = [f for f in os.listdir(directory) if isfile(join(directory, f)) and f.endswith('.jpg')]
     for path in paths:
         img = mpimg.imread(join(directory, path))
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        
+        if not isGray:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
         train_images.append(np.asarray(img))
     return train_images
