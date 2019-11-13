@@ -88,6 +88,30 @@ def validate_body(image_id, faces, filename, wt=2, ht=3, s=1.3, mn=3, t=0):
             #win.append([x_min, y_min, bw, bh*1.3])
     return win, win_f
 
+def merge(bodies, faces):
+    merged_faces = []
+    for face in faces:
+        _, _, x21, y21, x22, y22 = face
+        should_merge = True
+        for body in bodies:
+            _, _, x11, y11, x12, y12 = body
+            overlap_x1 = max(x11, x21)
+            overlap_x2 = min(x12, x22)
+            overlap_y1 = max(y11, y21)
+            overlap_y2 = min(y12, y22)
+            if overlap_x2 < overlap_x1 or overlap_y2 < overlap_y1:
+                should_merge = True
+            else:
+                overlap = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
+                if overlap < 0.2 * (y22-y21) * (x22-x21):
+                    should_merge = True
+                else:
+                    should_merge = False
+                    break
+        if should_merge:
+            merged_faces.append(face)
+    return merged_faces
+
 def test_image(image_id, path):
     fig, ax = plt.subplots(figsize=(20, 20))
     ax.axis('off')
@@ -108,7 +132,9 @@ def test_image(image_id, path):
     waldo = load("hog_waldo")
     waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.15)
     waldo_bodies, waldo_faces = validate_body(image_id, waldo_faces, "xml/waldo_body_0.3_0.0002.xml", wt=3, ht=4, mn=5, t=1)
-   
+    waldo_faces.sort(key=lambda x: x[1], reverse=True)
+    waldo_faces = waldo_faces[:3]
+
     wenda_face_cascade = cv2.CascadeClassifier("xml/wenda_0.5_0.0007.xml")
     wenda_faces, _, wenda_score = wenda_face_cascade.detectMultiScale3(
         img,
@@ -122,6 +148,13 @@ def test_image(image_id, path):
     wenda = load("hog_wenda")
     wenda_faces = filter_candidate_hog(image_id, wenda_faces, wenda, 0.1)
     wenda_bodies, wenda_faces = validate_body(image_id, wenda_faces, "xml/wenda_body_0.3_0.0002.xml", mn=2, t=0)
+    wenda_faces.sort(key=lambda x: x[1], reverse=True)
+    wenda_faces = wenda_faces[:3]
+
+    print(len(wenda_faces), len(waldo_faces))
+    wenda_faces = merge(waldo_bodies, wenda_faces)
+    waldo_faces = merge(wenda_bodies, waldo_faces)
+    print(len(wenda_faces), len(waldo_faces))
 
     wizard_face_cascade = cv2.CascadeClassifier("xml/wizard_0.3_3e-5.xml")
     wizard_faces, _, wizard_score = wizard_face_cascade.detectMultiScale3(
@@ -134,14 +167,16 @@ def test_image(image_id, path):
     )
     wizard_faces = [wizard_face for i, wizard_face in enumerate(wizard_faces) if wizard_score[i][0] > 2]
     wizard = load("hog_wizard")
-    wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 0.1)
+    wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 0.2)
     wizard_bodies, wizard_faces = validate_body(image_id, wizard_faces, "xml/wizard_body_0.0003.xml", wt=3, ht=4, mn=4, t=0)
-    
+    wizard_faces.sort(key=lambda x: x[1], reverse=True)
+    wizard_faces = wizard_faces[:5]
+
     waldo_bodies.extend(waldo_faces)
     wenda_bodies.extend(wenda_faces)
     wizard_bodies.extend(wizard_faces)
     write(path, waldo_bodies, wenda_bodies, wizard_bodies)
-
+    return waldo_bodies, wenda_bodies, wizard_bodies
 
 def show_svm_res(f, val_images_all, vocab_size, training_set_this, train_labels_this, val_labels_this, categories, ax):
     vocab_filename = "vocab/{0}_{1}.pkl".format(f, vocab_size)
