@@ -1,2 +1,2 @@
-run visualize_img.ipynb to visualize images
+run VisualImg.ipynb to visualize images
 run `python evaluation.py` to testing against imagenames in val.txt
