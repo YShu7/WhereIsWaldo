@@ -85,43 +85,45 @@ def validate_body(image_id, faces, filename, wt=2, ht=3, s=1.3, mn=3, t=0):
             x_min = min(x_min, bx+x)
             y_min = min(y_min, by+y)
             win.append([image_id, waldo_bscore[i][0], x_min, y_min, x_min+bw, y_min+bh*1.3])
-            #win.append([x_min, y_min, bw, bh*1.3])
     return win, win_f
 
 
-def suppress(bodies):
+def suppress(bodies, threshold=0.9):
     """
-    Remove faces which are part of identified bodies.
-    :param bodies: (image
-    :param faces:
-    :return:
+    Suppress bodies if any of them share ratio of overlap threshold > 0.9.
     """
-    merged_faces = []
-    for i, body_a in enumerate(bodies):
-        _, _, x21, y21, x22, y22 = body_a
-        should_merge = True
-        for j, body_b in enumerate(bodies):
-            if i == j:
-                continue
-            _, _, x11, y11, x12, y12 = body_b
-            overlap_x1 = max(x11, x21)
-            overlap_x2 = min(x12, x22)
-            overlap_y1 = max(y11, y21)
-            overlap_y2 = min(y12, y22)
-            if overlap_x2 < overlap_x1 or overlap_y2 < overlap_y1:
-                should_merge = True
-            else:
-                overlap = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
-                union = (y22 - y21) * (x22 - x21) + (y12 - y11) * (x12 - x11) - overlap
-                score = overlap / union
-                if score < 0.1:
-                    should_merge = True
-                else:
-                    should_merge = False
-                    break
-        if should_merge:
-            merged_faces.append(body_a)
-    return merged_faces
+    if len(bodies) == 0:
+        return []
+    boxes = np.stack(bodies, axis=0)
+    pick = []
+
+    # grab the coordinates of the bounding boxes
+    x1 = boxes[:, 2].astype(float)
+    y1 = boxes[:, 3].astype(float)
+    x2 = boxes[:, 4].astype(float)
+    y2 = boxes[:, 5].astype(float)
+
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    idxs = np.argsort(y2)
+
+    while len(idxs) > 0:
+        last = len(idxs) - 1
+        i = idxs[last]
+        pick.append(i)
+
+        xx1 = np.maximum(x1[i], x1[idxs[:last]])
+        yy1 = np.maximum(y1[i], y1[idxs[:last]])
+        xx2 = np.minimum(x2[i], x2[idxs[:last]])
+        yy2 = np.minimum(y2[i], y2[idxs[:last]])
+
+        w = np.maximum(0, xx2 - xx1 + 1)
+        h = np.maximum(0, yy2 - yy1 + 1)
+
+        overlap = (w * h) / area[idxs[:last]]
+
+        idxs = np.delete(idxs, np.concatenate(([last], np.where(overlap > threshold)[0])))
+
+    return boxes[pick].tolist()
 
 
 def merge(bodies, faces):
@@ -169,12 +171,12 @@ def test_image(image_id, path):
         flags = cv2.CASCADE_SCALE_IMAGE,
         outputRejectLevels = True
     )
-    waldo_faces = [waldo_face for i, waldo_face in enumerate(waldo_faces) if waldo_score[i][0] > 3]
+    waldo_faces = [waldo_face for i, waldo_face in enumerate(waldo_faces) if waldo_score[i][0] > 2]
     waldo = load("hog_waldo")
-    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.15)
+    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.2)
     waldo_bodies, waldo_faces = validate_body(image_id, waldo_faces, "xml/waldo_body_0.3_0.0002.xml", wt=3, ht=4, mn=5, t=1)
     waldo_faces.sort(key=lambda x: x[1], reverse=True)
-    waldo_faces = waldo_faces[:5]
+    waldo_faces = waldo_faces[:10]
 
     wenda_face_cascade = cv2.CascadeClassifier("xml/wenda_0.5_0.0007.xml")
     wenda_faces, _, wenda_score = wenda_face_cascade.detectMultiScale3(
@@ -187,15 +189,13 @@ def test_image(image_id, path):
     )
     wenda_faces = [wenda_face for i, wenda_face in enumerate(wenda_faces) if wenda_score[i][0] > 2]
     wenda = load("hog_wenda")
-    wenda_faces = filter_candidate_hog(image_id, wenda_faces, wenda, 0.1)
+    wenda_faces = filter_candidate_hog(image_id, wenda_faces, wenda, 0.2)
     wenda_bodies, wenda_faces = validate_body(image_id, wenda_faces, "xml/wenda_body_0.3_0.0002.xml", mn=2, t=0)
     wenda_faces.sort(key=lambda x: x[1], reverse=True)
-    wenda_faces = wenda_faces[:5]
+    wenda_faces = wenda_faces[:10]
 
-    print(len(wenda_faces), len(waldo_faces))
     wenda_faces = merge(waldo_bodies, wenda_faces)
     waldo_faces = merge(wenda_bodies, waldo_faces)
-    print(len(wenda_faces), len(waldo_faces))
 
     wizard_face_cascade = cv2.CascadeClassifier("xml/wizard_0.3_3e-5.xml")
     wizard_faces, _, wizard_score = wizard_face_cascade.detectMultiScale3(
@@ -211,19 +211,18 @@ def test_image(image_id, path):
     wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 0.2)
     wizard_bodies, wizard_faces = validate_body(image_id, wizard_faces, "xml/wizard_body_0.0003.xml", wt=3, ht=4, mn=4, t=0)
     wizard_faces.sort(key=lambda x: x[1], reverse=True)
-    wizard_faces = wizard_faces[:5]
+    wizard_faces = wizard_faces
 
-    print(len(wenda_bodies), len(waldo_bodies), len(wizard_bodies))
     wenda_bodies = suppress(wenda_bodies)
     waldo_bodies = suppress(waldo_bodies)
     wizard_bodies = suppress(wizard_bodies)
-    print(len(wenda_bodies), len(waldo_bodies), len(wizard_bodies))
 
     waldo_bodies.extend(waldo_faces)
     wenda_bodies.extend(wenda_faces)
     wizard_bodies.extend(wizard_faces)
     write(path, waldo_bodies, wenda_bodies, wizard_bodies)
     return waldo_bodies, wenda_bodies, wizard_bodies
+
 
 def show_svm_res(f, val_images_all, vocab_size, training_set_this, train_labels_this, val_labels_this, categories, ax):
     vocab_filename = "vocab/{0}_{1}.pkl".format(f, vocab_size)
@@ -294,30 +293,3 @@ def show_results(test_labels, categories, predicted_categories, ax, cmap=plt.cm.
             ax.text(j, i, format(cm[i, j], fmt),
                     ha="center", va="center",
                     color="black")
-
-
-def plot(image_id, bboxes, color='r'):
-    fig, ax = plt.subplots(figsize=(20,16))
-    ax.axis('off')
-    img = mpimg.imread('datasets/JPEGImages/{}.jpg'.format(image_id))
-    im = ax.imshow(img)
-    annos_waldo = get_annotation(image_id, target='waldo')
-    for anno in annos_waldo:
-        x_min, y_min, x_max, y_max = anno
-        bbox = ax.add_patch(Rectangle((x_min,y_min),x_max-x_min,y_max-y_min, linewidth=1,
-                                      edgecolor='b', facecolor=(1,1,1,0.5)))
-    annos_wenda = get_annotation(image_id, target='wenda')
-    for anno in annos_wenda:
-        x_min, y_min, x_max, y_max = anno
-        bbox = ax.add_patch(Rectangle((x_min,y_min),x_max-x_min,y_max-y_min, linewidth=1,
-                                      edgecolor='b', facecolor=(1,1,1,0.5)))
-    annos_wizard = get_annotation(image_id, target='wizard')
-    for anno in annos_wizard:
-        x_min, y_min, x_max, y_max = anno
-        bbox = ax.add_patch(Rectangle((x_min,y_min),x_max-x_min,y_max-y_min, linewidth=1,
-                                      edgecolor='b', facecolor=(1,1,1,0.5)))
-
-    for box in bboxes:
-        y_min, y_max, x_min, x_max = box
-        bbox = ax.add_patch(Rectangle((x_min,y_min),x_max-x_min,y_max-y_min, linewidth=1,
-                                  edgecolor=color, facecolor='none'))
