@@ -171,12 +171,12 @@ def test_image(image_id, path):
         flags = cv2.CASCADE_SCALE_IMAGE,
         outputRejectLevels = True
     )
-    waldo_faces = [waldo_face for i, waldo_face in enumerate(waldo_faces) if waldo_score[i][0] > 2]
+    waldo_faces = [waldo_face for i, waldo_face in enumerate(waldo_faces) if waldo_score[i][0] > 3]
     waldo = load("hog_waldo")
-    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.2)
+    waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.15)
     waldo_bodies, waldo_faces = validate_body(image_id, waldo_faces, "xml/waldo_body_0.3_0.0002.xml", wt=3, ht=4, mn=5, t=1)
     waldo_faces.sort(key=lambda x: x[1], reverse=True)
-    waldo_faces = waldo_faces[:10]
+    waldo_faces = waldo_faces[:5]
 
     wenda_face_cascade = cv2.CascadeClassifier("xml/wenda_0.5_0.0007.xml")
     wenda_faces, _, wenda_score = wenda_face_cascade.detectMultiScale3(
@@ -189,10 +189,10 @@ def test_image(image_id, path):
     )
     wenda_faces = [wenda_face for i, wenda_face in enumerate(wenda_faces) if wenda_score[i][0] > 2]
     wenda = load("hog_wenda")
-    wenda_faces = filter_candidate_hog(image_id, wenda_faces, wenda, 0.2)
+    wenda_faces = filter_candidate_hog(image_id, wenda_faces, wenda, 0.1)
     wenda_bodies, wenda_faces = validate_body(image_id, wenda_faces, "xml/wenda_body_0.3_0.0002.xml", mn=2, t=0)
     wenda_faces.sort(key=lambda x: x[1], reverse=True)
-    wenda_faces = wenda_faces[:10]
+    wenda_faces = wenda_faces[:5]
 
     wenda_faces = merge(waldo_bodies, wenda_faces)
     waldo_faces = merge(wenda_bodies, waldo_faces)
@@ -211,7 +211,7 @@ def test_image(image_id, path):
     wizard_faces = filter_candidate_hog(image_id, wizard_faces, wizard, 0.2)
     wizard_bodies, wizard_faces = validate_body(image_id, wizard_faces, "xml/wizard_body_0.0003.xml", wt=3, ht=4, mn=4, t=0)
     wizard_faces.sort(key=lambda x: x[1], reverse=True)
-    wizard_faces = wizard_faces
+    wizard_faces = wizard_faces[:5]
 
     wenda_bodies = suppress(wenda_bodies)
     waldo_bodies = suppress(waldo_bodies)
