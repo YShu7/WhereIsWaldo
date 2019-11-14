@@ -88,7 +88,49 @@ def validate_body(image_id, faces, filename, wt=2, ht=3, s=1.3, mn=3, t=0):
             #win.append([x_min, y_min, bw, bh*1.3])
     return win, win_f
 
+
+def suppress(bodies):
+    """
+    Remove faces which are part of identified bodies.
+    :param bodies: (image
+    :param faces:
+    :return:
+    """
+    merged_faces = []
+    for i, body_a in enumerate(bodies):
+        _, _, x21, y21, x22, y22 = body_a
+        should_merge = True
+        for j, body_b in enumerate(bodies):
+            if i == j:
+                continue
+            _, _, x11, y11, x12, y12 = body_b
+            overlap_x1 = max(x11, x21)
+            overlap_x2 = min(x12, x22)
+            overlap_y1 = max(y11, y21)
+            overlap_y2 = min(y12, y22)
+            if overlap_x2 < overlap_x1 or overlap_y2 < overlap_y1:
+                should_merge = True
+            else:
+                overlap = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
+                union = (y22 - y21) * (x22 - x21) + (y12 - y11) * (x12 - x11) - overlap
+                score = overlap / union
+                if score < 0.1:
+                    should_merge = True
+                else:
+                    should_merge = False
+                    break
+        if should_merge:
+            merged_faces.append(body_a)
+    return merged_faces
+
+
 def merge(bodies, faces):
+    """
+    Remove bodies which are part of identified bodies.
+    :param bodies: (image
+    :param faces:
+    :return:
+    """
     merged_faces = []
     for face in faces:
         _, _, x21, y21, x22, y22 = face
@@ -103,7 +145,9 @@ def merge(bodies, faces):
                 should_merge = True
             else:
                 overlap = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
-                if overlap < 0.2 * (y22-y21) * (x22-x21):
+                union = (y22 - y21) * (x22 - x21) + (y12 - y11) * (x12 - x11) - overlap
+                score = overlap / union
+                if score < 0.1:
                     should_merge = True
                 else:
                     should_merge = False
@@ -113,13 +157,10 @@ def merge(bodies, faces):
     return merged_faces
 
 def test_image(image_id, path):
-    fig, ax = plt.subplots(figsize=(20, 20))
-    ax.axis('off')
-
     img = mpimg.imread(join("datasets/JPEGImages/{}.jpg".format(image_id)))
-    min_width = int(round(img.shape[0] ** 0.02))
+    min_width = int(round(img.shape[0] ** 0.01))
     min_height = int(round(min_width * 5 / 4))
-    waldo_face_cascade = cv2.CascadeClassifier("xml/lbp_40_40.xml")
+    waldo_face_cascade = cv2.CascadeClassifier("xml/waldo_40_40.xml")
     waldo_faces, _, waldo_score = waldo_face_cascade.detectMultiScale3(
         img,
         scaleFactor=1.3,
@@ -133,7 +174,7 @@ def test_image(image_id, path):
     waldo_faces = filter_candidate_hog(image_id, waldo_faces, waldo, 0.15)
     waldo_bodies, waldo_faces = validate_body(image_id, waldo_faces, "xml/waldo_body_0.3_0.0002.xml", wt=3, ht=4, mn=5, t=1)
     waldo_faces.sort(key=lambda x: x[1], reverse=True)
-    waldo_faces = waldo_faces[:3]
+    waldo_faces = waldo_faces[:5]
 
     wenda_face_cascade = cv2.CascadeClassifier("xml/wenda_0.5_0.0007.xml")
     wenda_faces, _, wenda_score = wenda_face_cascade.detectMultiScale3(
@@ -149,7 +190,7 @@ def test_image(image_id, path):
     wenda_faces = filter_candidate_hog(image_id, wenda_faces, wenda, 0.1)
     wenda_bodies, wenda_faces = validate_body(image_id, wenda_faces, "xml/wenda_body_0.3_0.0002.xml", mn=2, t=0)
     wenda_faces.sort(key=lambda x: x[1], reverse=True)
-    wenda_faces = wenda_faces[:3]
+    wenda_faces = wenda_faces[:5]
 
     print(len(wenda_faces), len(waldo_faces))
     wenda_faces = merge(waldo_bodies, wenda_faces)
@@ -171,6 +212,12 @@ def test_image(image_id, path):
     wizard_bodies, wizard_faces = validate_body(image_id, wizard_faces, "xml/wizard_body_0.0003.xml", wt=3, ht=4, mn=4, t=0)
     wizard_faces.sort(key=lambda x: x[1], reverse=True)
     wizard_faces = wizard_faces[:5]
+
+    print(len(wenda_bodies), len(waldo_bodies), len(wizard_bodies))
+    wenda_bodies = suppress(wenda_bodies)
+    waldo_bodies = suppress(waldo_bodies)
+    wizard_bodies = suppress(wizard_bodies)
+    print(len(wenda_bodies), len(waldo_bodies), len(wizard_bodies))
 
     waldo_bodies.extend(waldo_faces)
     wenda_bodies.extend(wenda_faces)

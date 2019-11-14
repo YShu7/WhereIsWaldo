@@ -32,7 +32,7 @@ classes = ['waldo', 'wenda', 'wizard']
 meanAP = 0
 for idx, classname in enumerate(classes) :
     rec, prec, ap = voc_eval(detpath, annopath, imagesetfile, classname,
-                                            cachedir, ovthresh=0.1, use_07_metric=False)
+                                            cachedir, ovthresh=0.3, use_07_metric=False)
     meanAP += ap
     print('{}: {}'.format(classname, ap))
 
